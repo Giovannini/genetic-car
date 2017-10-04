@@ -3,8 +3,8 @@
 import fetch from 'node-fetch';
 import { randomCar, toView, fromView } from './car';
 
-const host = 'http://genetic-car.herokuapp.com';
-// const host = 'http://localhost:8080';
+// const host = 'http://genetic-car.herokuapp.com';
+const host = 'http://localhost:9000';
 const team = 'ORANGE'; // RED, YELLOW, BLUE, GREEN, ORANGE, PURPLE
 const url = `${host}/simulation/evaluate/${team}`;
 
@@ -42,13 +42,14 @@ async function run() {
 }
 
 async function loop(currentGeneration, n) {
-  if (n > 20) {
+  if (n > 1000) {
     console.log("End of the algorithm")
     return;
   } else {
     const carsWithScore = await evaluate(currentGeneration.map(toView));
-    const selectedCars = select(carsWithScore); // 16
+    const selectedCars = rankedSelect(carsWithScore); // 16
     const crossedCars = cross(selectedCars.map(fromView));
+    console.log("CROSSEDCARS", crossedCars)
     const mutatedCars = mutateN(crossedCars);
     console.log('Mutated cars ', mutatedCars);
     console.log('CURRENT', currentGeneration);
@@ -65,18 +66,42 @@ function select(carsWithScore) {
   return sortedScoredCars.slice(0, arrayLength * 0.8)
 }
 
+function rankedSelect(carsWithScore) {
+  const arrayLength = carsWithScore.length;
+  const sortedScoredCars = carsWithScore.sort((a, b) => a.score - b.score);
+  const rankedCars = sortedScoredCars
+    .map((car, index) => Array.fillr, index / sum1To(arrayLength))
+  return sortedScoredCars.slice(0, arrayLength * 0.8)
+}
+
+function sum1To(n) {
+  if(n>0) return n + sum1To(n-1);
+  else return 0
+}
+
 function cross(cars) {
   // console.log('Crossing cars', cars);
   var arrays = [], size = 2;
 
   while (cars.length > 0)
-      arrays.push(cars.splice(0, size));
+    arrays.push(cars.splice(0, size));
 
-  return arrays.map(crossCars).reduce((a, b) => [...a, ...b]);
+  console.log("arrays", arrays);
+
+  return arrays.map((pair) => {
+    return crossCars(pair);
+  }).reduce((a, b) => [...a, ...b]);
 }
 
 function crossCars(cars) {
-  return [cars[0], cars[1]];
+  let car1 = toView(cars[0])
+  let car2 = toView(cars[1])
+
+  car1.chassis = car2.chassis
+  car2.wheel1 = car1.wheel1
+  car1.wheel2 = car2.wheel2
+
+  return [fromView({car: car1}), fromView({car: car2})];
 }
 
 function mutateN(cars) {
@@ -87,10 +112,10 @@ function mutateN(cars) {
       const mutatedCar = mutate(car);
 
       return mutatedCar;
-    } 
+    }
     else{
       return car;
-    } 
+    }
   });
 }
 
@@ -109,10 +134,10 @@ function addBest(newGeneration, oldGenerationWithScore) {
   const sortedOldGeneration = oldGenerationWithScore.sort((a, b) => a.score - b.score);
   console.log('sortedOldGeneration', sortedOldGeneration);
   return [
-    ...newGeneration, 
+    ...newGeneration,
     fromView(sortedOldGeneration[0]),
-    fromView(sortedOldGeneration[1]), 
-    fromView(sortedOldGeneration[18]), 
+    fromView(sortedOldGeneration[1]),
+    fromView(sortedOldGeneration[18]),
     fromView(sortedOldGeneration[19])
   ];
 }
